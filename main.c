@@ -63,17 +63,23 @@ int main(int argc, char **argv) {
 	git_index_write_tree(&tree_oid, index);
 	git_tree_lookup(&tree, repo, &tree_oid);
 
-	git_diff *diff = NULL;
+	git_oid head_oid;
+	git_commit *head_commit = NULL;
+	git_tree *head_tree = NULL;
 
-	git_diff_index_to_workdir(&diff, repo, NULL, NULL);
+	if (git_reference_name_to_id(&head_oid, repo, "HEAD") == 0 &&
+			git_commit_lookup(&head_commit, repo, &head_oid) == 0) {
 
-	if (git_diff_num_deltas(diff) == 0) {
-		printf("Nothing to commit\n");
-		git_diff_free(diff);
-		return 0;
+		git_commit_tree(&head_tree, head_commit);
+
+		if (git_oid_equal(&tree_oid, git_tree_id(head_tree))) {
+			printf("Nothing to commit\n");
+
+			git_tree_free(head_tree);
+			git_commit_free(head_commit);
+			return 0;
+		}
 	}
-
-	git_diff_free(diff);
 
 	git_index_free(index);
 
