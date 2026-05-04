@@ -7,27 +7,37 @@ int print_usage() {
 }
 
 int stage_file(git_repository *repo, const char *path) {
-    git_index *index = NULL;
-    int error = 0;
+	git_index *index = NULL;
+	int error = 0;
 
-    // Get the repository index
-    if ((error = git_repository_index(&index, repo)) < 0)
-        return error;
+	// Get the repository index
+	if ((error = git_repository_index(&index, repo)) < 0)
+		return error;
 
-    // Add the file path to the index (stage it)
-    if ((error = git_index_add_bypath(index, path)) < 0) {
-        git_index_free(index);
-        return error;
-    }
+	// Add the file path to the index (stage it)
+	if ((error = git_index_add_bypath(index, path)) < 0) {
+		git_index_free(index);
+		return error;
+	}
 
-    // Write the updated index back to disk
-    if ((error = git_index_write(index)) < 0) {
-        git_index_free(index);
-        return error;
-    }
+	// Write the updated index back to disk
+	if ((error = git_index_write(index)) < 0) {
+		git_index_free(index);
+		return error;
+	}
 
-    git_index_free(index);
-    return 0;
+	git_index_free(index);
+	return 0;
+}
+
+int stage_file_loop(git_repository *repo, const char *path) {
+	printf("Untracked: %s\n", path);
+	if (stage_file(repo, path) != 0) {
+		printf("Failed to stage file %s\n", path);
+	}
+	else {
+		printf("Successfully staged file %s\n", path);
+	}
 }
 
 int main(int argc, char **argv) {
@@ -59,35 +69,16 @@ int main(int argc, char **argv) {
 		// Check if the file status is "Worktree New" (untracked)
 		if (s->status & GIT_STATUS_WT_NEW) {
 			const char *path = s->index_to_workdir->new_file.path;
-			printf("Untracked: %s\n", path);
-			char opt;
-			printf("Would you like to stage this file? (y/n)\n");
-			scanf(" %c", &opt);
-			while (opt != 'y' && opt != 'Y' && opt != 'n' && opt != 'N') {
-				printf("Invalid input. Please select 'y' or 'n'\n");
-				printf("Would you like to stage this file? (y/n)\n");
-				scanf(&opt);
-			}
-			if (opt == 'y' || opt == 'Y') {
-				if (stage_file(repo, path) != 0) {
-					printf("Failed to stage file %s\n", path);
-				}
-				else {
-					printf("Successfully staged file %s\n", path);
-				}
-			}
-			else {
-				continue;
-			}
+			stage_file_loop(repo, path);
 		}
 		else {
 			printf("No untracked files found in %s", argv[1]);
 		}
 	}
 
-	git_status_list_free(status);
-	git_repository_free(repo);
-	git_libgit2_shutdown();
-	return 0;
-}
+		git_status_list_free(status);
+		git_repository_free(repo);
+		git_libgit2_shutdown();
+		return 0;
+	}
 
